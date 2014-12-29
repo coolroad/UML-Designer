@@ -24,7 +24,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.WorkspaceModifyOperation;
-import org.obeonetwork.dsl.uml2.design.ui.wizards.newmodel.UmlProjectUtils;
+import org.obeonetwork.dsl.uml2.design.utils.UmlProjectUtils;
 
 /**
  * UML Designer 3.0 to UML Designer 4.0 migration operation. It converts the

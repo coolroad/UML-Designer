@@ -11,6 +11,7 @@
 package org.obeonetwork.dsl.uml2.design.tests.plugin.manual;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -39,6 +40,8 @@ public class ServiceTestsUtils {
 
 	private static Set<String> umlWhiteList = Sets.newHashSet(getAllUmlOperations());
 
+	private static Set<String> siriusWhiteList = Sets.newHashSet("getTarget");
+
 	public static void collectDeclaredServicesFromUmlDesignerViewpoints(Set<Method> allDeclaredServices) {
 		Set<JavaExtension> allExtensions = new HashSet<JavaExtension>();
 		collectJavaExtensionsFromUmlDesignerViewpoints(allExtensions);
@@ -47,7 +50,48 @@ public class ServiceTestsUtils {
 				@SuppressWarnings("rawtypes")
 				Class clazz = Class.forName(extension.getQualifiedClassName());
 				for (Method method : clazz.getDeclaredMethods()) {
-					allDeclaredServices.add(method);
+					if (method.getModifiers() == Modifier.PUBLIC) {
+						allDeclaredServices.add(method);
+					}
+
+				}
+			} catch (ClassNotFoundException e) {
+				// Nothing to do, this is checked by the {@link JavaExtensionTests}
+			}
+		}
+	}
+
+	public static void collectDeclaredServicesFromUmlDesignerViewpoint(Set<Method> allDeclaredServices,
+			String viewpointName) {
+		Set<JavaExtension> allExtensions = new HashSet<JavaExtension>();
+		collectJavaExtensionsFromUmlDesignerViewpoint(allExtensions, viewpointName);
+		for (JavaExtension extension : allExtensions) {
+			try {
+				@SuppressWarnings("rawtypes")
+				Class clazz = Class.forName(extension.getQualifiedClassName());
+				for (Method method : clazz.getDeclaredMethods()) {
+					if (method.getModifiers() == Modifier.PUBLIC) {
+						allDeclaredServices.add(method);
+					}
+				}
+			} catch (ClassNotFoundException e) {
+				// Nothing to do, this is checked by the {@link JavaExtensionTests}
+			}
+		}
+	}
+	
+	public static void collectServicesFromUmlDesignerViewpoint(Set<Method> allServices,
+			String viewpointName) {
+		Set<JavaExtension> allExtensions = new HashSet<JavaExtension>();
+		collectJavaExtensionsFromUmlDesignerViewpoint(allExtensions, viewpointName);
+		for (JavaExtension extension : allExtensions) {
+			try {
+				@SuppressWarnings("rawtypes")
+				Class clazz = Class.forName(extension.getQualifiedClassName());
+				for (Method method : clazz.getMethods()) {
+					if (method.getModifiers() == Modifier.PUBLIC) {
+						allServices.add(method);
+					}
 				}
 			} catch (ClassNotFoundException e) {
 				// Nothing to do, this is checked by the {@link JavaExtensionTests}
@@ -92,8 +136,10 @@ public class ServiceTestsUtils {
 		if (expr.startsWith("[") && expr.endsWith("/]")) {
 			String[] splitExpr = expr.split("\\.");
 			for (String exprPart : splitExpr) {
-				if (exprPart.matches("\\w+ *\\([^\\)]*\\).*") && !exprPart.startsWith("ocl")
-						&& !containsAcceleoKeywords(exprPart) && !containsUmlOperations(getServiceName(exprPart))) {
+				if (exprPart.matches("\\w+ *\\(.*") && !exprPart.startsWith("ocl")
+						&& !containsAcceleoKeywords(exprPart)
+						&& !containsUmlOperations(getServiceName(exprPart))
+						&& !containsSiriusOperations(exprPart)) {
 					return getServiceName(exprPart);
 				}
 			}
@@ -111,6 +157,14 @@ public class ServiceTestsUtils {
 
 	private static boolean containsUmlOperations(String expression) {
 		for (String keywords : umlWhiteList) {
+			if (expression.equals(keywords))
+				return true;
+		}
+		return false;
+	}
+
+	private static boolean containsSiriusOperations(String expression) {
+		for (String keywords : siriusWhiteList) {
 			if (expression.equals(keywords))
 				return true;
 		}
@@ -142,17 +196,16 @@ public class ServiceTestsUtils {
 				String[] splitExpr = expr.split("\\.");
 				for (String exprPart : splitExpr) {
 					String service = getServiceName(exprPart);
-					if (!service.equals(exprPart) && !containsUmlOperations(service)) {
+					if (!service.equals(exprPart) && !containsUmlOperations(service)&& !containsSiriusOperations(service)) {
 						return service;
 					}
 				}
 
-				if (!containsUmlOperations(splitExpr[splitExpr.length - 1])) {
-					return getServiceName(splitExpr[splitExpr.length - 1]);
+				String service = splitExpr[splitExpr.length - 1];
+				if (!containsUmlOperations(service)&& !containsSiriusOperations(service)) {
+					return getServiceName(service);
 				}
-			}
-
-			if (!containsUmlOperations(expr)) {
+			}else			if (!containsUmlOperations(expr)&& !containsSiriusOperations(expr)) {
 				return getServiceName(expr);
 			}
 		}
@@ -160,7 +213,7 @@ public class ServiceTestsUtils {
 	}
 
 	private static String getServiceName(String expr) {
-		if (expr.contains("(") && expr.contains(")")) {
+		if (expr.contains("(")) {
 			return expr.substring(0, expr.indexOf("("));
 		}
 		return expr;
@@ -174,11 +227,21 @@ public class ServiceTestsUtils {
 		collectServiceExpressionFromUmlDesignerViewpoints(allServiceExpressions, "Extend");
 	}
 
+	public static void collectServiceExpressionFromUmlDesignerViewpoint(
+			Set<InterpretedExpression> allServiceExpressions, String viewpointName) {
+		collectServiceExpressionFromUmlDesignerViewpoints(allServiceExpressions, viewpointName);
+	}
+
 	public static void collectJavaExtensionsFromUmlDesignerViewpoints(Set<JavaExtension> allExtensions) {
 		collectJavaExtensionsFromUmlDesignerViewpoints("Capture", allExtensions);
 		collectJavaExtensionsFromUmlDesignerViewpoints("Design", allExtensions);
 		collectJavaExtensionsFromUmlDesignerViewpoints("Review", allExtensions);
 		collectJavaExtensionsFromUmlDesignerViewpoints("Extend", allExtensions);
+	}
+
+	public static void collectJavaExtensionsFromUmlDesignerViewpoint(Set<JavaExtension> allExtensions,
+			String viewpointName) {
+		collectJavaExtensionsFromUmlDesignerViewpoints(viewpointName, allExtensions);
 	}
 
 	private static void collectJavaExtensionsFromUmlDesignerViewpoints(String vpName,
